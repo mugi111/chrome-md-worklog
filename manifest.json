@@ -1,0 +1,8 @@
+{
+  "manifest_version": 3,
+  "name": "Markdown Work Log",
+  "version": "1.0.0",
+  "permissions": ["sidePanel", "storage", "unlimitedStorage", "downloads"],
+  "side_panel": { "default_path": "index.html" },
+  "action": { "default_title": "ログを開く" }
+}
