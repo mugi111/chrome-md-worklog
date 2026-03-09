@@ -1,7 +1,7 @@
 import './style.css'
 import { createEditor } from './editor';
 import { getTodayDateString } from './utils';
-import { loadLog, saveLogDebounced, getAllLogs, loadTemplate, saveTemplate } from './storage';
+import { loadLog, saveLogDebounced, loadTemplate, saveTemplate } from './storage';
 import { DEFAULT_TEMPLATE } from './template';
 
 let currentEditor: any = null;
@@ -26,24 +26,11 @@ async function renderEditor(date: string) {
 }
 
 async function init() {
-  const allLogs = await getAllLogs();
-  if (!allLogs.includes(currentDate)) {
-    allLogs.unshift(currentDate);
-  }
-  
-  const optionsHtml = allLogs.map(date => 
-    `<option value="${date}" ${date === currentDate ? 'selected' : ''}>${date}</option>`
-  ).join('');
-
   document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <header>
       <div style="display: flex; gap: 8px; align-items: center; width: 100%; justify-content: space-between;">
         <div style="display: flex; gap: 8px; align-items: center;">
           <input type="date" id="date-picker" title="Select arbitrary date" max="2100-12-31" style="padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color);" />
-          <select id="history-selector" aria-label="Select history date">
-            <option value="" disabled selected>History</option>
-            ${optionsHtml}
-          </select>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
           <button id="settings-btn" title="Template Settings">⚙️</button>
@@ -55,7 +42,6 @@ async function init() {
   `;
 
   const datePicker = document.getElementById('date-picker') as HTMLInputElement;
-  const historySelector = document.getElementById('history-selector') as HTMLSelectElement;
 
   if (datePicker) {
     datePicker.value = currentDate;
@@ -63,22 +49,11 @@ async function init() {
       const target = e.target as HTMLInputElement;
       if (target.value) {
         currentDate = target.value;
-        historySelector.value = ""; // Deselect history dropdown
         if (currentEditor) currentEditor.destroy();
         renderEditor(currentDate).catch(err => console.error(err));
       }
     });
   }
-
-  historySelector?.addEventListener('change', (e) => {
-    const target = e.target as HTMLSelectElement;
-    if (target.value) {
-      currentDate = target.value;
-      if (datePicker) datePicker.value = currentDate;
-      if (currentEditor) currentEditor.destroy();
-      renderEditor(currentDate).catch(err => console.error(err));
-    }
-  });
 
   document.getElementById('export-btn')?.addEventListener('click', async () => {
     const content = await loadLog(currentDate);
