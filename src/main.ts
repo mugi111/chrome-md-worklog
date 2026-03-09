@@ -37,9 +37,12 @@ async function init() {
   document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <header>
       <h1>Work Log</h1>
-      <select id="history-selector" aria-label="Select history date">
-        ${optionsHtml}
-      </select>
+      <div style="display: flex; gap: 8px;">
+        <select id="history-selector" aria-label="Select history date">
+          ${optionsHtml}
+        </select>
+        <button id="export-btn" title="Export as Markdown">Export</button>
+      </div>
     </header>
     <main id="editor-container"></main>
   `;
@@ -51,6 +54,15 @@ async function init() {
       currentEditor.destroy(); // destroy previous editor if milkdown supports it
     }
     renderEditor(currentDate).catch(err => console.error(err));
+  });
+
+  document.getElementById('export-btn')?.addEventListener('click', async () => {
+    const content = await loadLog(currentDate);
+    if (content.trim()) {
+      import('./export').then(({ exportLogAsMarkdown }) => {
+        exportLogAsMarkdown(currentDate, content).catch(err => console.error('Export failed', err));
+      });
+    }
   });
 
   await renderEditor(currentDate);
