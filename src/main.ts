@@ -1,4 +1,5 @@
 import './style.css'
+import { createEditor } from './editor';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <header>
@@ -6,8 +7,13 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <span id="date-display">${new Date().toISOString().split('T')[0]}</span>
   </header>
   <main id="editor-container">
-    <div class="placeholder-text">
-      <p>Milkdown editor will be loaded here in Phase 2.</p>
-    </div>
   </main>
 `
+
+const container = document.getElementById('editor-container');
+if (container) {
+  createEditor(container, '# Loading...', (markdown) => {
+    console.log('Editor content updated:', markdown);
+  }).catch(err => console.error('Failed to initialize editor', err));
+}
+
