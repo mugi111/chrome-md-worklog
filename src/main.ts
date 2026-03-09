@@ -1,26 +1,59 @@
 import './style.css'
 import { createEditor } from './editor';
 import { getTodayDateString } from './utils';
-import { loadLog, saveLogDebounced } from './storage';
+import { loadLog, saveLogDebounced, getAllLogs } from './storage';
+import { DEFAULT_TEMPLATE } from './template';
+
+let currentEditor: any = null;
+let currentDate: string = getTodayDateString();
+
+async function renderEditor(date: string) {
+  const container = document.getElementById('editor-container');
+  if (!container) return;
+  
+  // Clear existing
+  container.innerHTML = '';
+  
+  let content = await loadLog(date);
+  if (!content.trim()) {
+    content = DEFAULT_TEMPLATE;
+  }
+  
+  currentEditor = await createEditor(container, content, (markdown) => {
+    saveLogDebounced(date, markdown);
+  });
+}
 
 async function init() {
-  const today = getTodayDateString();
+  const allLogs = await getAllLogs();
+  if (!allLogs.includes(currentDate)) {
+    allLogs.unshift(currentDate);
+  }
   
+  const optionsHtml = allLogs.map(date => 
+    `<option value="${date}" ${date === currentDate ? 'selected' : ''}>${date}</option>`
+  ).join('');
+
   document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <header>
       <h1>Work Log</h1>
-      <span id="date-display">${today}</span>
+      <select id="history-selector" aria-label="Select history date">
+        ${optionsHtml}
+      </select>
     </header>
     <main id="editor-container"></main>
   `;
 
-  const container = document.getElementById('editor-container');
-  if (container) {
-    const initialContent = await loadLog(today);
-    createEditor(container, initialContent, (markdown) => {
-      saveLogDebounced(today, markdown);
-    }).catch(err => console.error('Failed to initialize editor', err));
-  }
+  document.getElementById('history-selector')?.addEventListener('change', (e) => {
+    const target = e.target as HTMLSelectElement;
+    currentDate = target.value;
+    if (currentEditor) {
+      currentEditor.destroy(); // destroy previous editor if milkdown supports it
+    }
+    renderEditor(currentDate).catch(err => console.error(err));
+  });
+
+  await renderEditor(currentDate);
 }
 
 init();

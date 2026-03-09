@@ -24,3 +24,12 @@ export function saveLogDebounced(date: string, content: string, delay = 500): vo
     });
   }, delay);
 }
+
+export async function getAllLogs(): Promise<string[]> {
+  const allData = await chrome.storage.local.get(null);
+  return Object.keys(allData)
+    .filter(key => key.startsWith(LOG_PREFIX))
+    .map(key => key.substring(LOG_PREFIX.length))
+    .sort()
+    .reverse(); // Newest first
+}
