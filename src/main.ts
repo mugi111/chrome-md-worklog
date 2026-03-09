@@ -37,15 +37,18 @@ async function init() {
 
   document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <header>
-      <h1>Work Log</h1>
-      <div style="display: flex; gap: 8px; align-items: center;">
-        <input type="date" id="date-picker" title="Select arbitrary date" max="2100-12-31" style="padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color);" />
-        <select id="history-selector" aria-label="Select history date">
-          <option value="" disabled selected>History</option>
-          ${optionsHtml}
-        </select>
-        <button id="settings-btn" title="Template Settings">⚙️</button>
-        <button id="export-btn" title="Export as Markdown">Export</button>
+      <div style="display: flex; gap: 8px; align-items: center; width: 100%; justify-content: space-between;">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <input type="date" id="date-picker" title="Select arbitrary date" max="2100-12-31" style="padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color);" />
+          <select id="history-selector" aria-label="Select history date">
+            <option value="" disabled selected>History</option>
+            ${optionsHtml}
+          </select>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button id="settings-btn" title="Template Settings">⚙️</button>
+          <button id="export-btn" title="Export as Markdown">Export</button>
+        </div>
       </div>
     </header>
     <main id="editor-container"></main>
