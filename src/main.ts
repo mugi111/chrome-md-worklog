@@ -1,7 +1,7 @@
 import './style.css'
 import { createEditor } from './editor';
 import { getTodayDateString } from './utils';
-import { loadLog, saveLogDebounced, getAllLogs } from './storage';
+import { loadLog, saveLogDebounced, getAllLogs, loadTemplate, saveTemplate } from './storage';
 import { DEFAULT_TEMPLATE } from './template';
 
 let currentEditor: any = null;
@@ -16,7 +16,8 @@ async function renderEditor(date: string) {
   
   let content = await loadLog(date);
   if (!content.trim()) {
-    content = DEFAULT_TEMPLATE;
+    const customTemplate = await loadTemplate();
+    content = customTemplate ?? DEFAULT_TEMPLATE;
   }
   
   currentEditor = await createEditor(container, content, (markdown) => {
@@ -37,23 +38,43 @@ async function init() {
   document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <header>
       <h1>Work Log</h1>
-      <div style="display: flex; gap: 8px;">
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <input type="date" id="date-picker" title="Select arbitrary date" max="2100-12-31" style="padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color);" />
         <select id="history-selector" aria-label="Select history date">
+          <option value="" disabled selected>History</option>
           ${optionsHtml}
         </select>
+        <button id="settings-btn" title="Template Settings">⚙️</button>
         <button id="export-btn" title="Export as Markdown">Export</button>
       </div>
     </header>
     <main id="editor-container"></main>
   `;
 
-  document.getElementById('history-selector')?.addEventListener('change', (e) => {
+  const datePicker = document.getElementById('date-picker') as HTMLInputElement;
+  const historySelector = document.getElementById('history-selector') as HTMLSelectElement;
+
+  if (datePicker) {
+    datePicker.value = currentDate;
+    datePicker.addEventListener('change', (e) => {
+      const target = e.target as HTMLInputElement;
+      if (target.value) {
+        currentDate = target.value;
+        historySelector.value = ""; // Deselect history dropdown
+        if (currentEditor) currentEditor.destroy();
+        renderEditor(currentDate).catch(err => console.error(err));
+      }
+    });
+  }
+
+  historySelector?.addEventListener('change', (e) => {
     const target = e.target as HTMLSelectElement;
-    currentDate = target.value;
-    if (currentEditor) {
-      currentEditor.destroy(); // destroy previous editor if milkdown supports it
+    if (target.value) {
+      currentDate = target.value;
+      if (datePicker) datePicker.value = currentDate;
+      if (currentEditor) currentEditor.destroy();
+      renderEditor(currentDate).catch(err => console.error(err));
     }
-    renderEditor(currentDate).catch(err => console.error(err));
   });
 
   document.getElementById('export-btn')?.addEventListener('click', async () => {
@@ -62,6 +83,33 @@ async function init() {
       import('./export').then(({ exportLogAsMarkdown }) => {
         exportLogAsMarkdown(currentDate, content).catch(err => console.error('Export failed', err));
       });
+    }
+  });
+
+  // Settings Modal Logic
+  const settingsBtn = document.getElementById('settings-btn');
+  const modal = document.getElementById('settings-modal');
+  const cancelBtn = document.getElementById('settings-cancel-btn');
+  const saveBtn = document.getElementById('settings-save-btn');
+  const templateEditor = document.getElementById('template-editor') as HTMLTextAreaElement;
+
+  settingsBtn?.addEventListener('click', async () => {
+    if (modal && templateEditor) {
+      const currentTemplate = await loadTemplate();
+      templateEditor.value = currentTemplate ?? DEFAULT_TEMPLATE;
+      modal.style.display = 'flex';
+    }
+  });
+
+  cancelBtn?.addEventListener('click', () => {
+    if (modal) modal.style.display = 'none';
+  });
+
+  saveBtn?.addEventListener('click', async () => {
+    if (modal && templateEditor) {
+      await saveTemplate(templateEditor.value);
+      modal.style.display = 'none';
+      alert('Template saved! Note: Changes apply to new logs only.');
     }
   });
 

@@ -33,3 +33,14 @@ export async function getAllLogs(): Promise<string[]> {
     .sort()
     .reverse(); // Newest first
 }
+
+const TEMPLATE_KEY = 'settings_template';
+
+export async function loadTemplate(): Promise<string | undefined> {
+  const result = await chrome.storage.local.get(TEMPLATE_KEY);
+  return result[TEMPLATE_KEY] as string | undefined;
+}
+
+export async function saveTemplate(content: string): Promise<void> {
+  await chrome.storage.local.set({ [TEMPLATE_KEY]: content });
+}
