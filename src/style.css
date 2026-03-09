@@ -1,15 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
 :root {
-  --bg-color: #0f111a;
-  --header-bg: #161a22;
-  --text-main: #e2e8f0;
-  --text-muted: #94a3b8;
-  --border-color: #2d3748;
+  color-scheme: light dark;
+  --bg-color: #ffffff;
+  --header-bg: #f8fafc;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
   --accent-blue: #3b82f6;
   --accent-blue-hover: #2563eb;
   --btn-bg: transparent;
-  --btn-hover: rgba(255, 255, 255, 0.05);
+  --btn-hover: rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-color: #0f111a;
+    --header-bg: #161a22;
+    --text-main: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border-color: #2d3748;
+    --btn-hover: rgba(255, 255, 255, 0.05);
+  }
 }
 
 body {
@@ -112,7 +124,6 @@ input[type="date"] {
   font-size: 0.85rem;
   font-family: inherit;
   outline: none;
-  color-scheme: dark; /* makes the calendar icon dark mode on webkit */
 }
 
 input[type="date"]:hover {
@@ -165,7 +176,7 @@ input[type="date"]:hover {
 
 /* Typography styles for content to match design */
 .milkdown h1, .milkdown h2, .milkdown h3, .milkdown h4, .milkdown h5, .milkdown h6 {
-  color: white !important;
+  color: var(--text-main) !important;
   border-bottom: none !important; /* override nord border */
   margin-top: 1.5rem !important;
   margin-bottom: 0.75rem !important;
