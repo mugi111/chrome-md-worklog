@@ -7,6 +7,17 @@
   </head>
   <body>
     <div id="app"></div>
+    <div id="settings-modal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <h2>Template Settings</h2>
+        <p>Edit the default template for new daily logs.</p>
+        <textarea id="template-editor" rows="15" style="width: 100%; margin-bottom: 1rem;"></textarea>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button id="settings-cancel-btn">Cancel</button>
+          <button id="settings-save-btn">Save</button>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
