@@ -1,7 +1,7 @@
 import './style.css'
 import { createEditor } from './editor';
 import { getTodayDateString } from './utils';
-import { loadLog, saveLogDebounced, loadTemplate, saveTemplate } from './storage';
+import { loadLog, saveLogDebounced, loadTemplate, saveTemplate, migrateFromChromeStorage } from './storage';
 import { DEFAULT_TEMPLATE } from './template';
 
 let currentEditor: any = null;
@@ -26,6 +26,8 @@ async function renderEditor(date: string) {
 }
 
 async function init() {
+  await migrateFromChromeStorage();
+  
   document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div class="title-bar">
       <div class="title-bar-left">
