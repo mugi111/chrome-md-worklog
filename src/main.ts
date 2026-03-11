@@ -31,7 +31,7 @@ async function init() {
   document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div class="title-bar">
       <div class="title-bar-left">
-        <div class="logo-icon">M</div>
+        <img src="/icon.svg" alt="MD Work Log" class="logo-icon" />
         Markdown Work Log
       </div>
       <div class="title-bar-right">

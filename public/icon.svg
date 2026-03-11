@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="28" fill="#24292e"/>
+  <path d="M76 24h28a8 8 0 0 1 8 8v12H68V32a8 8 0 0 1 8-8z" fill="#e1e4e8"/>
+  <path d="M68 44h44v20a8 8 0 0 1-8 8H76a8 8 0 0 1-8-8V44z" fill="#fafbfc"/>
+  <path d="M82 54l6 6 12-12" fill="none" stroke="#24292e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="78" y="18" width="6" height="12" rx="3" fill="#f9826c"/>
+  <rect x="96" y="18" width="6" height="12" rx="3" fill="#f9826c"/>
+  <text x="20" y="96" font-family="monospace, sans-serif" font-size="64" font-weight="bold" fill="#79c0ff">
+    #
+  </text>
+  <text x="70" y="104" font-family="sans-serif" font-size="32" font-weight="bold" fill="#e1e4e8">
+    MD
+  </text>
+</svg>

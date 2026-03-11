@@ -1,8 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Markdown Work Log",
-  "version": "1.1.0",
+  "version": "1.1.1",
+  "icons": {
+    "16": "icon.svg",
+    "32": "icon.svg",
+    "48": "icon.svg",
+    "128": "icon.svg"
+  },
   "permissions": ["sidePanel", "storage", "unlimitedStorage", "downloads"],
   "side_panel": { "default_path": "index.html" },
-  "action": { "default_title": "ログを開く" }
+  "action": {
+    "default_title": "ログを開く",
+    "default_icon": "icon.svg"
+  }
 }
