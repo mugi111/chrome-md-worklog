@@ -1,15 +1,16 @@
 /// <reference types="chrome" />
+import { getLog, putLog, getAllLogDates, getSetting, putSetting } from './db';
+
 export const LOG_PREFIX = 'log_';
+const TEMPLATE_KEY = 'settings_template';
 
 export async function loadLog(date: string): Promise<string> {
-  const key = `${LOG_PREFIX}${date}`;
-  const result = await chrome.storage.local.get(key);
-  return (result[key] as string) || '';
+  const content = await getLog(date);
+  return content || '';
 }
 
 export async function saveLogDirect(date: string, content: string): Promise<void> {
-  const key = `${LOG_PREFIX}${date}`;
-  await chrome.storage.local.set({ [key]: content });
+  await putLog(date, content);
 }
 
 // Simple debounce implementation
@@ -26,21 +27,37 @@ export function saveLogDebounced(date: string, content: string, delay = 500): vo
 }
 
 export async function getAllLogs(): Promise<string[]> {
-  const allData = await chrome.storage.local.get(null);
-  return Object.keys(allData)
-    .filter(key => key.startsWith(LOG_PREFIX))
-    .map(key => key.substring(LOG_PREFIX.length))
-    .sort()
-    .reverse(); // Newest first
+  return await getAllLogDates();
 }
 
-const TEMPLATE_KEY = 'settings_template';
-
 export async function loadTemplate(): Promise<string | undefined> {
-  const result = await chrome.storage.local.get(TEMPLATE_KEY);
-  return result[TEMPLATE_KEY] as string | undefined;
+  return await getSetting(TEMPLATE_KEY);
 }
 
 export async function saveTemplate(content: string): Promise<void> {
-  await chrome.storage.local.set({ [TEMPLATE_KEY]: content });
+  await putSetting(TEMPLATE_KEY, content);
+}
+
+export async function migrateFromChromeStorage(): Promise<void> {
+  const migrationRanKey = 'indexeddb_migration_complete';
+  const check = await chrome.storage.local.get(migrationRanKey);
+  if (check[migrationRanKey]) {
+    return; // Already migrated
+  }
+
+  console.log('Migrating data from chrome.storage.local to IndexedDB...');
+  const allData = await chrome.storage.local.get(null);
+  
+  for (const [key, value] of Object.entries(allData)) {
+    if (key.startsWith(LOG_PREFIX)) {
+      const date = key.substring(LOG_PREFIX.length);
+      await putLog(date, value as string);
+    } else if (key === TEMPLATE_KEY) {
+      await putSetting(TEMPLATE_KEY, value as string);
+    }
+  }
+
+  // Mark migration as complete
+  await chrome.storage.local.set({ [migrationRanKey]: true });
+  console.log('Migration complete!');
 }
