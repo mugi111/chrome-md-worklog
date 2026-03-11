@@ -1,0 +1,58 @@
+name: Release Chrome Extension
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on version tags like v1.0.0
+
+permissions:
+  contents: write
+
+jobs:
+  build_and_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Vite requires Node 20+
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Extension
+        run: npm run build
+
+      - name: Package Extension
+        run: |
+          cd dist
+          zip -r ../extension.zip *
+          cd ..
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: extension.zip
+          generate_release_notes: true
+          
+      # -------------------------------------------------------------
+      # OPTIONAL: Chrome Web Store Auto-Publish
+      # To enable this, uncomment the section below and add the 
+      # following Secrets to your GitHub Repository:
+      # - EXTENSION_ID (Chrome Web Store Item ID)
+      # - CLIENT_ID (Google Cloud Console OAuth Client ID)
+      # - CLIENT_SECRET (Google Cloud Console OAuth Client Secret)
+      # - REFRESH_TOKEN (Google OAuth Refresh Token)
+      # -------------------------------------------------------------
+      # - name: Publish to Chrome Web Store
+      #   uses: fregante/chrome-webstore-upload-submit@v3
+      #   with:
+      #     extension-id: ${{ secrets.EXTENSION_ID }}
+      #     zip-path: 'extension.zip'
+      #     client-id: ${{ secrets.CLIENT_ID }}
+      #     client-secret: ${{ secrets.CLIENT_SECRET }}
+      #     refresh-token: ${{ secrets.REFRESH_TOKEN }}
