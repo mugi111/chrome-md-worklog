@@ -3,6 +3,14 @@ import { getLog, putLog, getAllLogDates, getSetting, putSetting } from './db';
 
 export const LOG_PREFIX = 'log_';
 const TEMPLATE_KEY = 'settings_template';
+const MIGRATION_COMPLETE_KEY = 'indexeddb_migration_complete';
+
+type PendingSave = {
+  content: string;
+  timeoutId: number;
+};
+
+const pendingSaves = new Map<string, PendingSave>();
 
 export async function loadLog(date: string): Promise<string> {
   const content = await getLog(date);
@@ -13,17 +21,36 @@ export async function saveLogDirect(date: string, content: string): Promise<void
   await putLog(date, content);
 }
 
-// Simple debounce implementation
-let timeoutId: number | null = null;
 export function saveLogDebounced(date: string, content: string, delay = 500): void {
-  if (timeoutId !== null) {
-    clearTimeout(timeoutId);
+  const existingSave = pendingSaves.get(date);
+  if (existingSave) {
+    clearTimeout(existingSave.timeoutId);
   }
-  timeoutId = window.setTimeout(() => {
-    saveLogDirect(date, content).catch(err => {
+
+  const timeoutId = window.setTimeout(() => {
+    pendingSaves.delete(date);
+    saveLogDirect(date, content).catch((err) => {
       console.error('Failed to save log', err);
     });
   }, delay);
+
+  pendingSaves.set(date, { content, timeoutId });
+}
+
+export async function flushPendingSave(date: string): Promise<void> {
+  const pendingSave = pendingSaves.get(date);
+  if (!pendingSave) {
+    return;
+  }
+
+  clearTimeout(pendingSave.timeoutId);
+  pendingSaves.delete(date);
+  await saveLogDirect(date, pendingSave.content);
+}
+
+export async function flushAllPendingSaves(): Promise<void> {
+  const dates = Array.from(pendingSaves.keys());
+  await Promise.all(dates.map((date) => flushPendingSave(date)));
 }
 
 export async function getAllLogs(): Promise<string[]> {
@@ -39,9 +66,8 @@ export async function saveTemplate(content: string): Promise<void> {
 }
 
 export async function migrateFromChromeStorage(): Promise<void> {
-  const migrationRanKey = 'indexeddb_migration_complete';
-  const check = await chrome.storage.local.get(migrationRanKey);
-  if (check[migrationRanKey]) {
+  const check = await chrome.storage.local.get(MIGRATION_COMPLETE_KEY);
+  if (check[MIGRATION_COMPLETE_KEY]) {
     return; // Already migrated
   }
 
@@ -58,6 +84,6 @@ export async function migrateFromChromeStorage(): Promise<void> {
   }
 
   // Mark migration as complete
-  await chrome.storage.local.set({ [migrationRanKey]: true });
+  await chrome.storage.local.set({ [MIGRATION_COMPLETE_KEY]: true });
   console.log('Migration complete!');
 }

@@ -1,34 +1,48 @@
 import './style.css'
 import { createEditor } from './editor';
 import { getTodayDateString } from './utils';
-import { loadLog, saveLogDebounced, loadTemplate, saveTemplate, migrateFromChromeStorage } from './storage';
+import {
+  flushAllPendingSaves,
+  flushPendingSave,
+  loadLog,
+  loadTemplate,
+  migrateFromChromeStorage,
+  saveLogDebounced,
+  saveTemplate,
+} from './storage';
 import { DEFAULT_TEMPLATE } from './template';
 
-let currentEditor: any = null;
-let currentDate: string = getTodayDateString();
+type DestroyableEditor = {
+  destroy: () => void;
+};
 
-async function renderEditor(date: string) {
-  const container = document.getElementById('editor-container');
-  if (!container) return;
-  
-  // Clear existing
-  container.innerHTML = '';
-  
-  let content = await loadLog(date);
-  if (!content.trim()) {
-    const customTemplate = await loadTemplate();
-    content = customTemplate ?? DEFAULT_TEMPLATE;
+type AppElements = {
+  container: HTMLElement;
+  datePicker: HTMLInputElement;
+  exportButton: HTMLButtonElement;
+  settingsButton: HTMLButtonElement;
+  openTabButton: HTMLButtonElement;
+  closeButton: HTMLButtonElement;
+  modal: HTMLDivElement;
+  templateEditor: HTMLTextAreaElement;
+  cancelButton: HTMLButtonElement;
+  saveButton: HTMLButtonElement;
+};
+
+let currentEditor: DestroyableEditor | null = null;
+let currentDate = getTodayDateString();
+
+function getRequiredElement<T extends HTMLElement>(id: string): T {
+  const element = document.getElementById(id);
+  if (!element) {
+    throw new Error(`Missing required element: ${id}`);
   }
-  
-  currentEditor = await createEditor(container, content, (markdown) => {
-    saveLogDebounced(date, markdown);
-  });
+
+  return element as T;
 }
 
-async function init() {
-  await migrateFromChromeStorage();
-  
-  document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+function renderAppShell(root: HTMLElement): AppElements {
+  root.innerHTML = `
     <div class="title-bar">
       <div class="title-bar-left">
         <img src="/icon.svg" alt="MD Work Log" class="logo-icon" />
@@ -46,7 +60,7 @@ async function init() {
         </button>
       </div>
     </div>
-    
+
     <div class="toolbar">
       <div class="date-input-wrapper">
         <input type="date" id="date-picker" title="Select arbitrary date" max="2100-12-31" />
@@ -63,71 +77,135 @@ async function init() {
       <span>MARKDOWN MODE</span>
       <span>Saved locally</span>
     </footer>
+
+    <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="modal-content">
+        <h2 id="settings-title">Template Settings</h2>
+        <p class="modal-description">Template changes apply only when a log is empty.</p>
+        <textarea id="template-editor" rows="12" spellcheck="false"></textarea>
+        <div class="modal-actions">
+          <button id="settings-cancel-btn" class="action-btn" type="button">Cancel</button>
+          <button id="settings-save-btn" class="action-btn primary-btn" type="button">Save Template</button>
+        </div>
+      </div>
+    </div>
   `;
 
-  const datePicker = document.getElementById('date-picker') as HTMLInputElement;
+  return {
+    container: getRequiredElement<HTMLElement>('editor-container'),
+    datePicker: getRequiredElement<HTMLInputElement>('date-picker'),
+    exportButton: getRequiredElement<HTMLButtonElement>('export-btn'),
+    settingsButton: getRequiredElement<HTMLButtonElement>('settings-btn'),
+    openTabButton: getRequiredElement<HTMLButtonElement>('open-tab-btn'),
+    closeButton: getRequiredElement<HTMLButtonElement>('close-btn'),
+    modal: getRequiredElement<HTMLDivElement>('settings-modal'),
+    templateEditor: getRequiredElement<HTMLTextAreaElement>('template-editor'),
+    cancelButton: getRequiredElement<HTMLButtonElement>('settings-cancel-btn'),
+    saveButton: getRequiredElement<HTMLButtonElement>('settings-save-btn'),
+  };
+}
 
-  if (datePicker) {
-    datePicker.value = currentDate;
-    datePicker.addEventListener('change', (e) => {
-      const target = e.target as HTMLInputElement;
-      if (target.value) {
-        currentDate = target.value;
-        if (currentEditor) currentEditor.destroy();
-        renderEditor(currentDate).catch(err => console.error(err));
-      }
-    });
+function openModal(modal: HTMLDivElement): void {
+  modal.classList.remove('hidden');
+}
+
+function closeModal(modal: HTMLDivElement): void {
+  modal.classList.add('hidden');
+}
+
+async function getEditorContent(date: string): Promise<string> {
+  let content = await loadLog(date);
+  if (!content.trim()) {
+    const customTemplate = await loadTemplate();
+    content = customTemplate ?? DEFAULT_TEMPLATE;
   }
 
-  document.getElementById('export-btn')?.addEventListener('click', async () => {
+  return content;
+}
+
+async function renderEditor(container: HTMLElement, date: string) {
+  container.innerHTML = '';
+
+  const content = await getEditorContent(date);
+  currentEditor = await createEditor(container, content, (markdown) => {
+    saveLogDebounced(date, markdown);
+  });
+}
+
+async function switchDate(container: HTMLElement, nextDate: string): Promise<void> {
+  if (nextDate === currentDate) {
+    return;
+  }
+
+  await flushPendingSave(currentDate);
+  currentDate = nextDate;
+  currentEditor?.destroy();
+  await renderEditor(container, currentDate);
+}
+
+function bindEvents(elements: AppElements): void {
+  elements.datePicker.value = currentDate;
+  elements.datePicker.addEventListener('change', (event) => {
+    const nextDate = (event.target as HTMLInputElement).value;
+    if (!nextDate) {
+      return;
+    }
+
+    switchDate(elements.container, nextDate).catch((err) => console.error(err));
+  });
+
+  elements.exportButton.addEventListener('click', async () => {
+    await flushPendingSave(currentDate);
     const content = await loadLog(currentDate);
     if (content.trim()) {
       import('./export').then(({ exportLogAsMarkdown }) => {
-        exportLogAsMarkdown(currentDate, content).catch(err => console.error('Export failed', err));
+        exportLogAsMarkdown(currentDate, content).catch((err) => console.error('Export failed', err));
       });
     }
   });
 
-  // Settings Modal Logic
-  const settingsBtn = document.getElementById('settings-btn');
-  const closeBtn = document.getElementById('close-btn');
-  const modal = document.getElementById('settings-modal');
-  const cancelBtn = document.getElementById('settings-cancel-btn');
-  const saveBtn = document.getElementById('settings-save-btn');
-  const templateEditor = document.getElementById('template-editor') as HTMLTextAreaElement;
-
-  settingsBtn?.addEventListener('click', async () => {
-    if (modal && templateEditor) {
-      const currentTemplate = await loadTemplate();
-      templateEditor.value = currentTemplate ?? DEFAULT_TEMPLATE;
-      modal.style.display = 'flex';
-    }
+  elements.settingsButton.addEventListener('click', async () => {
+    const currentTemplate = await loadTemplate();
+    elements.templateEditor.value = currentTemplate ?? DEFAULT_TEMPLATE;
+    openModal(elements.modal);
   });
 
-  const openTabBtn = document.getElementById('open-tab-btn');
-  openTabBtn?.addEventListener('click', () => {
+  elements.openTabButton.addEventListener('click', () => {
     chrome.tabs.create({ url: chrome.runtime.getURL('index.html') });
   });
 
-  closeBtn?.addEventListener('click', () => {
-    window.close();
+  elements.closeButton.addEventListener('click', () => {
+    flushAllPendingSaves()
+      .catch((err) => console.error('Failed to flush pending saves', err))
+      .finally(() => window.close());
   });
 
-  cancelBtn?.addEventListener('click', () => {
-    if (modal) modal.style.display = 'none';
+  elements.cancelButton.addEventListener('click', () => {
+    closeModal(elements.modal);
   });
 
-  saveBtn?.addEventListener('click', async () => {
-    if (modal && templateEditor) {
-      await saveTemplate(templateEditor.value);
-      modal.style.display = 'none';
-      alert('Template saved! Note: Changes apply to new logs only.');
-    }
+  elements.saveButton.addEventListener('click', async () => {
+    await saveTemplate(elements.templateEditor.value);
+    closeModal(elements.modal);
+    alert('Template saved! Note: Changes apply to new logs only.');
+  });
+}
+
+async function init() {
+  await migrateFromChromeStorage();
+
+  const appRoot = getRequiredElement<HTMLDivElement>('app');
+  const elements = renderAppShell(appRoot);
+  bindEvents(elements);
+
+  window.addEventListener('beforeunload', () => {
+    flushAllPendingSaves().catch((err) => {
+      console.error('Failed to flush pending saves', err);
+    });
   });
 
-  await renderEditor(currentDate);
+  await renderEditor(elements.container, currentDate);
 }
 
 init();
-
 
