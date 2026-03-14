@@ -205,12 +205,16 @@ footer {
 /* Modal Styles */
 .modal {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  inset: 0;
   background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+}
+
+.modal.hidden {
+  display: none;
 }
 
 .modal-content {
@@ -222,14 +226,39 @@ footer {
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   display: flex;
   flex-direction: column;
+  gap: 1rem;
+}
+
+.modal-description {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
 #template-editor {
   background-color: var(--bg-color);
-  color: var(--text-color);
+  color: var(--text-main);
   border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 0.5rem;
   font-family: inherit;
   resize: vertical;
+  min-height: 240px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.primary-btn {
+  background-color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #ffffff;
+}
+
+.primary-btn:hover {
+  background-color: var(--accent-blue-hover);
+  border-color: var(--accent-blue-hover);
 }

@@ -5,6 +5,24 @@ const STORE_SETTINGS = 'settings';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
+function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function withStore<T>(
+  storeName: string,
+  mode: IDBTransactionMode,
+  action: (store: IDBObjectStore) => Promise<T>,
+): Promise<T> {
+  const db = await initDB();
+  const transaction = db.transaction([storeName], mode);
+  const store = transaction.objectStore(storeName);
+  return action(store);
+}
+
 function initDB(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
 
@@ -37,70 +55,36 @@ function initDB(): Promise<IDBDatabase> {
 }
 
 export async function putLog(date: string, content: string): Promise<void> {
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_LOGS], 'readwrite');
-    const store = transaction.objectStore(STORE_LOGS);
-    const request = store.put({ date, content });
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+  await withStore(STORE_LOGS, 'readwrite', async (store) => {
+    await requestToPromise(store.put({ date, content }));
   });
 }
 
 export async function getLog(date: string): Promise<string | undefined> {
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_LOGS], 'readonly');
-    const store = transaction.objectStore(STORE_LOGS);
-    const request = store.get(date);
-
-    request.onsuccess = () => {
-      resolve(request.result ? request.result.content : undefined);
-    };
-    request.onerror = () => reject(request.error);
+  return withStore(STORE_LOGS, 'readonly', async (store) => {
+    const result = await requestToPromise(store.get(date));
+    return result ? (result as { content: string }).content : undefined;
   });
 }
 
 export async function getAllLogDates(): Promise<string[]> {
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_LOGS], 'readonly');
-    const store = transaction.objectStore(STORE_LOGS);
-    const request = store.getAllKeys();
-
-    request.onsuccess = () => {
-      const dates = (request.result as string[])
-        .sort()
-        .reverse(); // Newest first
-      resolve(dates);
-    };
-    request.onerror = () => reject(request.error);
+  return withStore(STORE_LOGS, 'readonly', async (store) => {
+    const dates = (await requestToPromise(store.getAllKeys()) as string[])
+      .sort()
+      .reverse();
+    return dates;
   });
 }
 
 export async function putSetting(key: string, value: string): Promise<void> {
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_SETTINGS], 'readwrite');
-    const store = transaction.objectStore(STORE_SETTINGS);
-    const request = store.put({ key, value });
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+  await withStore(STORE_SETTINGS, 'readwrite', async (store) => {
+    await requestToPromise(store.put({ key, value }));
   });
 }
 
 export async function getSetting(key: string): Promise<string | undefined> {
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_SETTINGS], 'readonly');
-    const store = transaction.objectStore(STORE_SETTINGS);
-    const request = store.get(key);
-
-    request.onsuccess = () => {
-      resolve(request.result ? request.result.value : undefined);
-    };
-    request.onerror = () => reject(request.error);
+  return withStore(STORE_SETTINGS, 'readonly', async (store) => {
+    const result = await requestToPromise(store.get(key));
+    return result ? (result as { value: string }).value : undefined;
   });
 }
