@@ -32,6 +32,29 @@ type AppElements = {
 let currentEditor: DestroyableEditor | null = null;
 let currentDate = getTodayDateString();
 
+function moveCaretToEnd(element: HTMLElement): void {
+  const selection = window.getSelection();
+  if (!selection) {
+    return;
+  }
+
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function focusEditorFromContainer(container: HTMLElement): void {
+  const editorElement = container.querySelector<HTMLElement>('.ProseMirror');
+  if (!editorElement) {
+    return;
+  }
+
+  editorElement.focus();
+  moveCaretToEnd(editorElement);
+}
+
 function getRequiredElement<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
   if (!element) {
@@ -145,6 +168,15 @@ async function switchDate(container: HTMLElement, nextDate: string): Promise<voi
 
 function bindEvents(elements: AppElements): void {
   elements.datePicker.value = currentDate;
+  elements.container.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.ProseMirror')) {
+      return;
+    }
+
+    focusEditorFromContainer(elements.container);
+  });
+
   elements.datePicker.addEventListener('change', (event) => {
     const nextDate = (event.target as HTMLInputElement).value;
     if (!nextDate) {
@@ -208,4 +240,3 @@ async function init() {
 }
 
 init();
-

@@ -150,6 +150,7 @@ input[type="date"]:hover {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  cursor: text;
 }
 
 /* Milkdown Overrides */
@@ -161,11 +162,17 @@ input[type="date"]:hover {
   max-width: 800px;
   margin: 0 auto;
   width: 100%;
+  flex: 1;
 }
 
 .milkdown .editor {
   padding: 0 !important;
   outline: none !important;
+  min-height: 100%;
+}
+
+.milkdown .ProseMirror {
+  min-height: 100%;
 }
 
 /* Typography styles for content to match design */
